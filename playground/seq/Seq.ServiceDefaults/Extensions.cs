@@ -58,6 +58,8 @@ public static class Extensions
                     tracing.SetSampler(new AlwaysOnSampler());
                 }
 
+                tracing.AddSource("MyApp.Source");
+
                 tracing.AddAspNetCoreInstrumentation()
                        .AddGrpcClientInstrumentation()
                        .AddHttpClientInstrumentation();
