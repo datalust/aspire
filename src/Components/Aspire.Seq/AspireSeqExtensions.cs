@@ -15,7 +15,7 @@ public static class AspireSeqExtensions
     const string ConnectionStringConfigurationKeyPrefix = "ConnectionStrings:";
     const string DefaultConnectionStringConfigurationKey = $"{ConnectionStringConfigurationKeyPrefix}seq";
 
-    public static void AddSeq(this IHostApplicationBuilder builder, string? name = null)
+    public static void AddSeqEndpoint(this IHostApplicationBuilder builder, string? name = null)
     {
         var connectionString = (builder.Configuration[string.IsNullOrEmpty(name)
             ? DefaultConnectionStringConfigurationKey
