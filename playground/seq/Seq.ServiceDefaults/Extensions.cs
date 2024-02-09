@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -19,6 +18,7 @@ public static class Extensions
     public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
     {
         builder.ConfigureOpenTelemetry();
+        builder.AddSeq();
 
         builder.AddDefaultHealthChecks();
 
@@ -77,7 +77,6 @@ public static class Extensions
             builder.Services.Configure<OpenTelemetryLoggerOptions>(logging => logging.AddOtlpExporter());
             builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddOtlpExporter());
             builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddOtlpExporter());
-            builder.AddExportToSeq();
         }
 
         // Uncomment the following lines to enable the Prometheus exporter (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
@@ -87,25 +86,6 @@ public static class Extensions
         // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.Exporter package)
         // builder.Services.AddOpenTelemetry()
         //    .UseAzureMonitor();
-
-        return builder;
-    }
-
-    static IHostApplicationBuilder AddExportToSeq(this IHostApplicationBuilder builder)
-    {
-        builder.Services.Configure<OpenTelemetryLoggerOptions>(logging => logging.AddOtlpExporter(opt =>
-        {
-            opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/logs");
-            opt.Protocol = OtlpExportProtocol.HttpProtobuf;
-        }));
-        builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing
-            .AddSource("MyApp.Source")
-            .AddOtlpExporter(opt =>
-                {
-                    opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
-                    opt.Protocol = OtlpExportProtocol.HttpProtobuf;
-                }
-            ));
 
         return builder;
     }

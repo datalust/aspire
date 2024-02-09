@@ -5,10 +5,10 @@ using AspireSeq.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var seq = builder.AddSeq(name: "seq", acceptEula: true);
+var seq = builder.AddSeq(acceptEula: true);
 
 builder.AddProject<Projects.Seq_ApiService>("api")
-       .WithReference(seq);
+    .WithReference(seq);
 
 // This project is only added in playground projects to support development/debugging
 // of the dashboard. It is not required in end developer code. Comment out this code
