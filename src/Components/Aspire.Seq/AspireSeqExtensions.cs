@@ -8,7 +8,7 @@ using OpenTelemetry.Trace;
 namespace Microsoft.Extensions.Hosting;
 
 /// <summary>
-/// Extension methods for connecting MongoDB database with MongoDB.Driver client.
+/// Extension methods for connecting a project's OpenTelemetry log events and spans to Seq.
 /// </summary>
 public static class AspireSeqExtensions
 {
