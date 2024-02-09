@@ -27,7 +27,6 @@ public static class AspireSeqExtensions
             opt.Protocol = OtlpExportProtocol.HttpProtobuf;
         }));
         builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing
-            .AddSource("MyApp.Source")
             .AddOtlpExporter(opt =>
                 {
                     opt.Endpoint = new Uri($"{connectionString}/ingest/otlp/v1/traces");
