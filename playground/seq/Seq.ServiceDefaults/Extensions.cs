@@ -18,7 +18,7 @@ public static class Extensions
     public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
     {
         builder.ConfigureOpenTelemetry();
-        builder.AddSeq();
+        builder.AddSeqEndpoint();
 
         builder.AddDefaultHealthChecks();
 
@@ -57,6 +57,8 @@ public static class Extensions
                     // We want to view all traces in development
                     tracing.SetSampler(new AlwaysOnSampler());
                 }
+
+                tracing.AddSource("MyApp.Source");
 
                 tracing.AddAspNetCoreInstrumentation()
                        .AddGrpcClientInstrumentation()
