@@ -14,13 +14,20 @@ public class AzureBicepKeyVaultResource(string name) :
     IResourceWithConnectionString
 {
     /// <summary>
+    /// Gets the "vaultUri" output reference for the Azure Key Vault resource.
+    /// </summary>
+    public BicepOutputReference VaultUri => new("vaultUri", this);
+
+    /// <summary>
+    /// Gets the connection string template for the manifest for the Azure Key Vault resource.
+    /// </summary>
+    public string ConnectionStringExpression => VaultUri.ValueExpression;
+
+    /// <summary>
     /// Gets the connection string for the Azure Key Vault resource.
     /// </summary>
     /// <returns>The connection string for the Azure Key Vault resource.</returns>
-    public string? GetConnectionString()
-    {
-        return Outputs["vaultUri"];
-    }
+    public string? GetConnectionString() => VaultUri.Value;
 }
 
 /// <summary>
@@ -36,11 +43,7 @@ public static class AzureBicepKeyVaultResourceExtensions
     /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
     public static IResourceBuilder<AzureBicepKeyVaultResource> AddBicepKeyVault(this IDistributedApplicationBuilder builder, string name)
     {
-        var resource = new AzureBicepKeyVaultResource(name)
-        {
-            ConnectionStringTemplate = $"{{{name}.outputs.vaultUri}}"
-        };
-
+        var resource = new AzureBicepKeyVaultResource(name);
         return builder.AddResource(resource)
                     .WithParameter(AzureBicepResource.KnownParameters.PrincipalId)
                     .WithParameter(AzureBicepResource.KnownParameters.PrincipalType)

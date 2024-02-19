@@ -15,13 +15,13 @@ public class AddMongoDBTests
     {
         var appBuilder = DistributedApplication.CreateBuilder();
 
-        appBuilder.AddMongoDBContainer("mongodb");
+        appBuilder.AddMongoDB("mongodb");
 
         var app = appBuilder.Build();
 
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
 
-        var containerResource = Assert.Single(appModel.Resources.OfType<MongoDBContainerResource>());
+        var containerResource = Assert.Single(appModel.Resources.OfType<MongoDBServerResource>());
         Assert.Equal("mongodb", containerResource.Name);
 
         var manifestAnnotation = Assert.Single(containerResource.Annotations.OfType<ManifestPublishingCallbackAnnotation>());
@@ -37,7 +37,7 @@ public class AddMongoDBTests
         Assert.Equal("tcp", endpoint.UriScheme);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("7.0.5", containerAnnotation.Tag);
         Assert.Equal("mongo", containerAnnotation.Image);
         Assert.Null(containerAnnotation.Registry);
     }
@@ -46,13 +46,13 @@ public class AddMongoDBTests
     public void AddMongoDBContainerAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddMongoDBContainer("mongodb", 9813);
+        appBuilder.AddMongoDB("mongodb", 9813);
 
         var app = appBuilder.Build();
 
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
 
-        var containerResource = Assert.Single(appModel.Resources.OfType<MongoDBContainerResource>());
+        var containerResource = Assert.Single(appModel.Resources.OfType<MongoDBServerResource>());
         Assert.Equal("mongodb", containerResource.Name);
 
         var manifestAnnotation = Assert.Single(containerResource.Annotations.OfType<ManifestPublishingCallbackAnnotation>());
@@ -68,7 +68,7 @@ public class AddMongoDBTests
         Assert.Equal("tcp", endpoint.UriScheme);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("7.0.5", containerAnnotation.Tag);
         Assert.Equal("mongo", containerAnnotation.Image);
         Assert.Null(containerAnnotation.Registry);
     }
@@ -78,7 +78,7 @@ public class AddMongoDBTests
     {
         var appBuilder = DistributedApplication.CreateBuilder();
         appBuilder
-            .AddMongoDBContainer("mongodb")
+            .AddMongoDB("mongodb")
             .WithAnnotation(
                 new AllocatedEndpointAnnotation("mybinding",
                 ProtocolType.Tcp,
