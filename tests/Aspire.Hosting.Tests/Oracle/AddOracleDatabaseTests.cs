@@ -13,7 +13,7 @@ public class AddOracleDatabaseTests
     public void AddOracleDatabaseWithDefaultsAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddOracleDatabaseContainer("orcl");
+        appBuilder.AddOracleDatabase("orcl");
 
         var app = appBuilder.Build();
 
@@ -26,7 +26,7 @@ public class AddOracleDatabaseTests
         Assert.NotNull(manifestPublishing.Callback);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("23.3.0.0", containerAnnotation.Tag);
         Assert.Equal("database/free", containerAnnotation.Image);
         Assert.Equal("container-registry.oracle.com", containerAnnotation.Registry);
 
@@ -42,7 +42,8 @@ public class AddOracleDatabaseTests
         var envAnnotations = containerResource.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {
@@ -61,7 +62,7 @@ public class AddOracleDatabaseTests
     public void AddOracleDatabaseAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddOracleDatabaseContainer("orcl", 1234, "pass");
+        appBuilder.AddOracleDatabase("orcl", 1234, "pass");
 
         var app = appBuilder.Build();
 
@@ -74,7 +75,7 @@ public class AddOracleDatabaseTests
         Assert.NotNull(manifestPublishing.Callback);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("23.3.0.0", containerAnnotation.Tag);
         Assert.Equal("database/free", containerAnnotation.Image);
         Assert.Equal("container-registry.oracle.com", containerAnnotation.Registry);
 
@@ -90,7 +91,8 @@ public class AddOracleDatabaseTests
         var envAnnotations = containerResource.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {
@@ -109,7 +111,7 @@ public class AddOracleDatabaseTests
     public void OracleCreatesConnectionString()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddOracleDatabaseContainer("orcl")
+        appBuilder.AddOracleDatabase("orcl")
             .WithAnnotation(
             new AllocatedEndpointAnnotation("mybinding",
             ProtocolType.Tcp,
@@ -133,7 +135,7 @@ public class AddOracleDatabaseTests
     public void OracleCreatesConnectionStringWithDatabase()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddOracleDatabaseContainer("orcl")
+        appBuilder.AddOracleDatabase("orcl")
             .WithAnnotation(
             new AllocatedEndpointAnnotation("mybinding",
             ProtocolType.Tcp,
@@ -147,7 +149,7 @@ public class AddOracleDatabaseTests
 
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
 
-        var oracleResource = Assert.Single(appModel.Resources.OfType<OracleDatabaseContainerResource>());
+        var oracleResource = Assert.Single(appModel.Resources.OfType<OracleDatabaseServerResource>());
         var oracleConnectionString = oracleResource.GetConnectionString();
         var oracleDatabaseResource = Assert.Single(appModel.Resources.OfType<OracleDatabaseResource>());
         var dbConnectionString = oracleDatabaseResource.GetConnectionString();
@@ -159,7 +161,7 @@ public class AddOracleDatabaseTests
     public void AddDatabaseToOracleDatabaseAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddOracleDatabaseContainer("oracle", 1234, "pass").AddDatabase("db");
+        appBuilder.AddOracleDatabase("oracle", 1234, "pass").AddDatabase("db");
 
         var app = appBuilder.Build();
 
@@ -173,7 +175,7 @@ public class AddOracleDatabaseTests
         Assert.NotNull(manifestPublishing.Callback);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("23.3.0.0", containerAnnotation.Tag);
         Assert.Equal("database/free", containerAnnotation.Image);
         Assert.Equal("container-registry.oracle.com", containerAnnotation.Registry);
 
@@ -189,7 +191,8 @@ public class AddOracleDatabaseTests
         var envAnnotations = containerResource.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {

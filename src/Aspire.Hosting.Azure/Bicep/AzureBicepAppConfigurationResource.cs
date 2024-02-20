@@ -14,13 +14,20 @@ public class AzureBicepAppConfigurationResource(string name) :
     IResourceWithConnectionString
 {
     /// <summary>
+    /// Gets the appConfigEndpoint output reference for the Azure App Configuration resource.
+    /// </summary>
+    public BicepOutputReference Endpoint => new("appConfigEndpoint", this);
+
+    /// <summary>
+    /// Gets the connection string template for the manifest for the Azure App Configuration resource.
+    /// </summary>
+    public string ConnectionStringExpression => Endpoint.ValueExpression;
+
+    /// <summary>
     /// Gets the connection string for the Azure App Configuration resource.
     /// </summary>
     /// <returns>The connection string for the Azure App Configuration resource.</returns>
-    public string? GetConnectionString()
-    {
-        return Outputs["appConfigEndpoint"];
-    }
+    public string? GetConnectionString() => Endpoint.Value;
 }
 
 /// <summary>
@@ -36,11 +43,7 @@ public static class AzureBicepAppConfigurationExtensions
     /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
     public static IResourceBuilder<AzureBicepAppConfigurationResource> AddBicepAppConfiguration(this IDistributedApplicationBuilder builder, string name)
     {
-        var resource = new AzureBicepAppConfigurationResource(name)
-        {
-            ConnectionStringTemplate = $"{{{name}.outputs.appConfigEndpoint}}"
-        };
-
+        var resource = new AzureBicepAppConfigurationResource(name);
         return builder.AddResource(resource)
                 .WithParameter("configName", resource.CreateBicepResourceName())
                 .WithParameter(AzureBicepResource.KnownParameters.PrincipalId)
