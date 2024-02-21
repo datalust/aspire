@@ -32,12 +32,20 @@ public static class AspireSeqExtensions
         {
             opt.Endpoint = new Uri($"{seqUri}/ingest/otlp/v1/logs");
             opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+            if (!string.IsNullOrEmpty(settings.ApiKey))
+            {
+                opt.Headers = $"X-Seq-ApiKey={settings.ApiKey}";
+            }
         }));
         builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing
             .AddOtlpExporter(opt =>
                 {
                     opt.Endpoint = new Uri($"{seqUri}/ingest/otlp/v1/traces");
                     opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+                    if (!string.IsNullOrEmpty(settings.ApiKey))
+                    {
+                        opt.Headers = $"X-Seq-ApiKey={settings.ApiKey}";
+                    }
                 }
             ));
 
