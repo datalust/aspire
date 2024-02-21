@@ -6,4 +6,6 @@ namespace Aspire.Seq;
 public class SeqSettings
 {
     public bool HealthChecks { get; set; } = true;
+
+    public string ApiKey { get; set; } = string.Empty;
 }
