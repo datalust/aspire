@@ -38,6 +38,18 @@ public class AzureBicepResourceTests
     }
 
     [Fact]
+    public void GetSecretOutputReturnsSecretOutputValue()
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        var bicepResource = builder.AddBicepTemplateString("templ", "content");
+
+        bicepResource.Resource.SecretOutputs["connectionString"] = "https://myendpoint;Key=43";
+
+        Assert.Equal("https://myendpoint;Key=43", bicepResource.GetSecretOutput("connectionString").Value);
+    }
+
+    [Fact]
     public void GetOutputValueThrowsIfNoOutput()
     {
         var builder = DistributedApplication.CreateBuilder();
@@ -45,6 +57,16 @@ public class AzureBicepResourceTests
         var bicepResource = builder.AddBicepTemplateString("templ", "content");
 
         Assert.Throws<InvalidOperationException>(() => bicepResource.GetOutput("resourceEndpoint").Value);
+    }
+
+    [Fact]
+    public void GetSecretOutputValueThrowsIfNoOutput()
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        var bicepResource = builder.AddBicepTemplateString("templ", "content");
+
+        Assert.Throws<InvalidOperationException>(() => bicepResource.GetSecretOutput("connectionString").Value);
     }
 
     [Fact]
@@ -60,15 +82,12 @@ public class AzureBicepResourceTests
                                     .WithParameter("param3", new JsonObject() { ["value"] = "nested" })
                                     .WithParameter("param4", param);
 
-        bicepResource.Resource.ConnectionStringTemplate = "put this in a manifest";
-
         // This makes a temp file
         var obj = GetManifest(bicepResource.Resource.WriteToManifest);
 
         Assert.NotNull(obj);
         Assert.Equal("azure.bicep.v0", obj["type"]?.ToString());
         Assert.NotNull(obj["path"]?.ToString());
-        Assert.Equal("put this in a manifest", obj["connectionString"]?.ToString());
         var parameters = obj["params"];
         Assert.NotNull(parameters);
         Assert.Equal("value1", parameters?["param1"]?.ToString());
@@ -86,8 +105,7 @@ public class AzureBicepResourceTests
         var cosmos = builder.AddBicepCosmosDb("cosmos");
         cosmos.AddDatabase("db", "mydatabase");
 
-        cosmos.Resource.Outputs["documentEndpoint"] = "https://myendpoint";
-        cosmos.Resource.Outputs[cosmos.Resource.AccountKeyOutputKey] = "mykey";
+        cosmos.Resource.SecretOutputs["connectionString"] = "mycosmosconnectionstring";
 
         var databases = cosmos.Resource.Parameters["databases"] as IEnumerable<string>;
 
@@ -96,8 +114,8 @@ public class AzureBicepResourceTests
         Assert.Equal("cosmos", cosmos.Resource.Parameters["databaseAccountName"]);
         Assert.NotNull(databases);
         Assert.Equal(["mydatabase"], databases);
-        Assert.Equal("AccountEndpoint=https://myendpoint;AccountKey=mykey;", cosmos.Resource.GetConnectionString());
-        Assert.Equal("AccountEndpoint={cosmos.outputs.documentEndpoint};AccountKey={key(Microsoft.DocumentDB/databaseAccounts@2023-04-15/{cosmos.outputs.accountName}).primaryMasterKey}", cosmos.Resource.ConnectionStringTemplate);
+        Assert.Equal("mycosmosconnectionstring", cosmos.Resource.GetConnectionString());
+        Assert.Equal("{cosmos.secretOutputs.connectionString}", cosmos.Resource.ConnectionStringExpression);
     }
 
     [Fact]
@@ -128,7 +146,7 @@ public class AzureBicepResourceTests
         Assert.Equal("appConfig", appConfig.Resource.Name);
         Assert.Equal("appconfig", appConfig.Resource.Parameters["configName"]);
         Assert.Equal("https://myendpoint", appConfig.Resource.GetConnectionString());
-        Assert.Equal("{appConfig.outputs.appConfigEndpoint}", appConfig.Resource.ConnectionStringTemplate);
+        Assert.Equal("{appConfig.outputs.appConfigEndpoint}", appConfig.Resource.ConnectionStringExpression);
     }
 
     [Fact]
@@ -138,14 +156,32 @@ public class AzureBicepResourceTests
 
         var redis = builder.AddBicepAzureRedis("redis");
 
-        redis.Resource.Outputs["hostName"] = "myhost";
-        redis.Resource.Outputs[redis.Resource.AccountKeyOutputKey] = "mykey";
+        redis.Resource.SecretOutputs["connectionString"] = "myconnectionstring";
 
         Assert.Equal("Aspire.Hosting.Azure.Bicep.redis.bicep", redis.Resource.TemplateResourceName);
         Assert.Equal("redis", redis.Resource.Name);
         Assert.Equal("redis", redis.Resource.Parameters["redisCacheName"]);
-        Assert.Equal("myhost,ssl=true,password=mykey", redis.Resource.GetConnectionString());
-        Assert.Equal("{redis.outputs.hostName},ssl=true,password={key(Microsoft.Cache/redis@2023-04-15/{redis.outputs.cacheName}).primaryKey}", redis.Resource.ConnectionStringTemplate);
+        Assert.Equal("myconnectionstring", redis.Resource.GetConnectionString());
+        Assert.Equal("{redis.secretOutputs.connectionString}", redis.Resource.ConnectionStringExpression);
+    }
+
+    [Fact]
+    public void PublishAsRedisPublishesRedisAsAzureRedis()
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        var redis = builder.AddRedis("cache").PublishAsAzureRedis();
+
+        Assert.True(redis.Resource.IsContainer());
+
+        var manifestCallback = redis.Resource.Annotations.OfType<ManifestPublishingCallbackAnnotation>().Single();
+
+        Assert.NotNull(manifestCallback?.Callback);
+
+        var manifest = GetManifest(manifestCallback.Callback);
+
+        Assert.Equal("azure.bicep.v0", manifest["type"]?.ToString());
+        Assert.Equal("{cache.secretOutputs.connectionString}", manifest["connectionString"]?.ToString());
     }
 
     [Fact]
@@ -161,7 +197,7 @@ public class AzureBicepResourceTests
         Assert.Equal("keyVault", keyVault.Resource.Name);
         Assert.Equal("keyvault", keyVault.Resource.Parameters["vaultName"]);
         Assert.Equal("https://myvault", keyVault.Resource.GetConnectionString());
-        Assert.Equal("{keyVault.outputs.vaultUri}", keyVault.Resource.ConnectionStringTemplate);
+        Assert.Equal("{keyVault.outputs.vaultUri}", keyVault.Resource.ConnectionStringExpression);
     }
 
     [Fact]
@@ -182,7 +218,34 @@ public class AzureBicepResourceTests
         Assert.NotNull(databases);
         Assert.Equal(["database"], databases);
         Assert.Equal("Server=tcp:myserver,1433;Encrypt=True;Authentication=\"Active Directory Default\"", sql.Resource.GetConnectionString());
-        Assert.Equal("Server=tcp:{sql.outputs.sqlServerFqdn},1433;Encrypt=True;Authentication=\"Active Directory Default\"", sql.Resource.ConnectionStringTemplate);
+        Assert.Equal("Server=tcp:{sql.outputs.sqlServerFqdn},1433;Encrypt=True;Authentication=\"Active Directory Default\"", sql.Resource.ConnectionStringExpression);
+    }
+
+    [Fact]
+    public void AddBicepPostgres()
+    {
+        var builder = DistributedApplication.CreateBuilder();
+
+        builder.Configuration["Parameters:pwd"] = "password";
+
+        var pwd = builder.AddParameter("pwd");
+        var postgres = builder.AddBicepAzurePostgres("postgres", "user", pwd);
+        postgres.AddDatabase("db", "database");
+
+        postgres.Resource.SecretOutputs["connectionString"] = "myconnectionstring";
+
+        var databases = postgres.Resource.Parameters["databases"] as IEnumerable<string>;
+
+        Assert.Equal("Aspire.Hosting.Azure.Bicep.postgres.bicep", postgres.Resource.TemplateResourceName);
+        Assert.Equal("postgres", postgres.Resource.Name);
+        Assert.Equal("postgres", postgres.Resource.Parameters["serverName"]);
+        Assert.Equal("user", postgres.Resource.Parameters["administratorLogin"]);
+        Assert.Same(pwd, postgres.Resource.Parameters["administratorLoginPassword"]);
+        Assert.True(postgres.Resource.Parameters.ContainsKey(AzureBicepResource.KnownParameters.KeyVaultName));
+        Assert.NotNull(databases);
+        Assert.Equal(["database"], databases);
+        Assert.Equal("myconnectionstring", postgres.Resource.GetConnectionString());
+        Assert.Equal("{postgres.secretOutputs.connectionString}", postgres.Resource.ConnectionStringExpression);
     }
 
     [Fact]
@@ -205,7 +268,7 @@ public class AzureBicepResourceTests
         Assert.NotNull(topics);
         Assert.Equal(["topic1"], topics);
         Assert.Equal("mynamespaceEndpoint", sb.Resource.GetConnectionString());
-        Assert.Equal("{sb.outputs.serviceBusEndpoint}", sb.Resource.ConnectionStringTemplate);
+        Assert.Equal("{sb.outputs.serviceBusEndpoint}", sb.Resource.ConnectionStringExpression);
     }
 
     [Fact]
@@ -226,11 +289,13 @@ public class AzureBicepResourceTests
         Assert.Equal("Aspire.Hosting.Azure.Bicep.storage.bicep", storage.Resource.TemplateResourceName);
         Assert.Equal("storage", storage.Resource.Name);
         Assert.Equal("storage", storage.Resource.Parameters["storageName"]);
-        Assert.Null(storage.Resource.ConnectionStringTemplate);
 
         Assert.Equal("https://myblob", blob.Resource.GetConnectionString());
         Assert.Equal("https://myqueue", queue.Resource.GetConnectionString());
         Assert.Equal("https://mytable", table.Resource.GetConnectionString());
+        Assert.Equal("{storage.outputs.blobEndpoint}", blob.Resource.ConnectionStringExpression);
+        Assert.Equal("{storage.outputs.queueEndpoint}", queue.Resource.ConnectionStringExpression);
+        Assert.Equal("{storage.outputs.tableEndpoint}", table.Resource.ConnectionStringExpression);
 
         var blobManifest = GetManifest(blob.Resource.WriteToManifest);
         Assert.Equal("{storage.outputs.blobEndpoint}", blobManifest["connectionString"]?.ToString());
@@ -250,7 +315,8 @@ public class AzureBicepResourceTests
         using var ms = new MemoryStream();
         var writer = new Utf8JsonWriter(ms);
         writer.WriteStartObject();
-        writeManifest(new ManifestPublishingContext(Environment.CurrentDirectory, writer));
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Publish);
+        writeManifest(new ManifestPublishingContext(executionContext, Environment.CurrentDirectory, writer));
         writer.WriteEndObject();
         writer.Flush();
         ms.Position = 0;

@@ -14,13 +14,19 @@ public class AzureBicepServiceBusResource(string name) :
     IResourceWithConnectionString
 {
     /// <summary>
+    /// Gets the "serviceBusEndpoint" output reference from the bicep template for the Azure Service Bus endpoint.
+    /// </summary>
+    public BicepOutputReference ServiceBusEndpoint => new("serviceBusEndpoint", this);
+
+    /// <summary>
+    /// Gets the connection string template for the manifest for the Azure Service Bus endpoint.
+    /// </summary>
+    public string ConnectionStringExpression => ServiceBusEndpoint.ValueExpression;
+    /// <summary>
     /// Gets the connection string for the Azure Service Bus endpoint.
     /// </summary>
     /// <returns>The connection string for the Azure Service Bus endpoint.</returns>
-    public string? GetConnectionString()
-    {
-        return Outputs["serviceBusEndpoint"];
-    }
+    public string? GetConnectionString() => ServiceBusEndpoint.Value;
 }
 
 /// <summary>
@@ -38,11 +44,7 @@ public static class AzureBicepServiceBusExtensions
     /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
     public static IResourceBuilder<AzureBicepServiceBusResource> AddBicepAzureServiceBus(this IDistributedApplicationBuilder builder, string name, string[]? queueNames = null, string[]? topicNames = null)
     {
-        var resource = new AzureBicepServiceBusResource(name)
-        {
-            ConnectionStringTemplate = $"{{{name}.outputs.serviceBusEndpoint}}"
-        };
-
+        var resource = new AzureBicepServiceBusResource(name);
         // TODO: Change topics and queues to child resources
 
         return builder.AddResource(resource)

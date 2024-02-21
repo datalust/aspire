@@ -7,8 +7,19 @@ using Aspire.Hosting.Publishing;
 
 namespace AspireSeq.AppHost;
 
+/// <summary>
+///
+/// </summary>
 public static class SeqBuilderExtensions
 {
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="builder"></param>
+    /// <param name="acceptEula"></param>
+    /// <param name="name"></param>
+    /// <param name="port"></param>
+    /// <returns></returns>
     public static IResourceBuilder<SeqResource> AddSeq(
         this IDistributedApplicationBuilder builder,
         bool acceptEula,

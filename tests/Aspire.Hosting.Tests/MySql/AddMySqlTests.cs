@@ -15,20 +15,20 @@ public class AddMySqlTests
     public void AddMySqlContainerWithDefaultsAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddMySqlContainer("mysql");
+        appBuilder.AddMySql("mysql");
 
         var app = appBuilder.Build();
 
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
 
-        var containerResource = Assert.Single(appModel.Resources.OfType<MySqlContainerResource>());
+        var containerResource = Assert.Single(appModel.Resources.OfType<MySqlServerResource>());
         Assert.Equal("mysql", containerResource.Name);
 
         var manifestAnnotation = Assert.Single(containerResource.Annotations.OfType<ManifestPublishingCallbackAnnotation>());
         Assert.NotNull(manifestAnnotation.Callback);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("8.3.0", containerAnnotation.Tag);
         Assert.Equal("mysql", containerAnnotation.Image);
         Assert.Null(containerAnnotation.Registry);
 
@@ -44,7 +44,8 @@ public class AddMySqlTests
         var envAnnotations = containerResource.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {
@@ -63,7 +64,7 @@ public class AddMySqlTests
     public void AddMySqlAddsAnnotationMetadata()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddMySqlContainer("mysql", 1234, "pass");
+        appBuilder.AddMySql("mysql", 1234, "pass");
 
         var app = appBuilder.Build();
 
@@ -76,7 +77,7 @@ public class AddMySqlTests
         Assert.NotNull(manifestPublishing.Callback);
 
         var containerAnnotation = Assert.Single(containerResource.Annotations.OfType<ContainerImageAnnotation>());
-        Assert.Equal("latest", containerAnnotation.Tag);
+        Assert.Equal("8.3.0", containerAnnotation.Tag);
         Assert.Equal("mysql", containerAnnotation.Image);
         Assert.Null(containerAnnotation.Registry);
 
@@ -92,7 +93,8 @@ public class AddMySqlTests
         var envAnnotations = containerResource.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {
@@ -111,7 +113,7 @@ public class AddMySqlTests
     public void MySqlCreatesConnectionString()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddMySqlContainer("mysql")
+        appBuilder.AddMySql("mysql")
             .WithAnnotation(
             new AllocatedEndpointAnnotation("mybinding",
             ProtocolType.Tcp,
@@ -134,7 +136,7 @@ public class AddMySqlTests
     public void MySqlCreatesConnectionStringWithDatabase()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddMySqlContainer("mysql")
+        appBuilder.AddMySql("mysql")
             .WithAnnotation(
             new AllocatedEndpointAnnotation("mybinding",
             ProtocolType.Tcp,
@@ -148,7 +150,7 @@ public class AddMySqlTests
 
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
 
-        var mySqlResource = Assert.Single(appModel.Resources.OfType<MySqlContainerResource>());
+        var mySqlResource = Assert.Single(appModel.Resources.OfType<MySqlServerResource>());
         var mySqlConnectionString = mySqlResource.GetConnectionString();
         var mySqlDatabaseResource = Assert.Single(appModel.Resources.OfType<MySqlDatabaseResource>());
         var dbConnectionString = mySqlDatabaseResource.GetConnectionString();
@@ -162,7 +164,7 @@ public class AddMySqlTests
     {
         var builder = DistributedApplication.CreateBuilder();
         builder.AddMySql("mySql").WithPhpMyAdmin();
-        builder.AddMySqlContainer("mySql2").WithPhpMyAdmin();
+        builder.AddMySql("mySql2").WithPhpMyAdmin();
 
         Assert.Single(builder.Resources.OfType<PhpMyAdminContainerResource>());
     }
@@ -186,7 +188,8 @@ public class AddMySqlTests
         var envAnnotations = myAdmin.Annotations.OfType<EnvironmentCallbackAnnotation>();
 
         var config = new Dictionary<string, string>();
-        var context = new EnvironmentCallbackContext("dcp", config);
+        var executionContext = new DistributedApplicationExecutionContext(DistributedApplicationOperation.Run);
+        var context = new EnvironmentCallbackContext(executionContext, config);
 
         foreach (var annotation in envAnnotations)
         {
@@ -205,7 +208,7 @@ public class AddMySqlTests
         builder.AddMySql("mySql").WithPhpMyAdmin();
 
         var container = builder.Resources.Single(r => r.Name == "mySql-phpmyadmin");
-        var volume = container.Annotations.OfType<VolumeMountAnnotation>().Single();
+        var volume = container.Annotations.OfType<ContainerMountAnnotation>().Single();
 
         Assert.True(File.Exists(volume.Source)); // File should exist, but will be empty.
         Assert.Equal("/etc/phpmyadmin/config.user.inc.php", volume.Target);
@@ -223,7 +226,7 @@ public class AddMySqlTests
         mysql2.WithAnnotation(new AllocatedEndpointAnnotation("tcp", ProtocolType.Tcp, "host.docker.internal", 5002, "tcp"));
 
         var myAdmin = builder.Resources.Single(r => r.Name.EndsWith("-phpmyadmin"));
-        var volume = myAdmin.Annotations.OfType<VolumeMountAnnotation>().Single();
+        var volume = myAdmin.Annotations.OfType<ContainerMountAnnotation>().Single();
 
         var app = builder.Build();
         var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
@@ -231,7 +234,7 @@ public class AddMySqlTests
         var hook = new PhpMyAdminConfigWriterHook();
         hook.AfterEndpointsAllocatedAsync(appModel, CancellationToken.None);
 
-        using var stream = File.OpenRead(volume.Source);
+        using var stream = File.OpenRead(volume.Source!);
         var fileContents = new StreamReader(stream).ReadToEnd();
 
         // check to see that the two hosts are in the file
