@@ -12,6 +12,8 @@ namespace AspireSeq.AppHost;
 /// </summary>
 public static class SeqBuilderExtensions
 {
+    const string SeqContainerDataDirectory = "/data";
+
     /// <summary>
     ///
     /// </summary>
@@ -19,19 +21,28 @@ public static class SeqBuilderExtensions
     /// <param name="acceptEula"></param>
     /// <param name="name"></param>
     /// <param name="port"></param>
+    /// <param name="seqDataDirectory"></param>
     /// <returns></returns>
     public static IResourceBuilder<SeqResource> AddSeq(
         this IDistributedApplicationBuilder builder,
         bool acceptEula,
         string name = "seq",
-        int port = 5341)
+        int port = 5341,
+        string? seqDataDirectory = null)
     {
         var seqResource = new SeqResource(name);
-        return builder.AddResource(seqResource)
+        var resourceBuilder = builder.AddResource(seqResource)
             .WithEndpoint(hostPort: port, containerPort: 80, scheme: "http")
             .WithAnnotation(new ContainerImageAnnotation { Image = "datalust/seq", Tag = "latest" })
             .WithEnvironment("ACCEPT_EULA", acceptEula ? "Y" : "N")
             .WithManifestPublishingCallback(context => WriteSeqResourceToManifest(context, seqResource));
+
+        if (!string.IsNullOrEmpty(seqDataDirectory))
+        {
+            resourceBuilder.WithBindMount(seqDataDirectory, SeqContainerDataDirectory);
+        }
+
+        return resourceBuilder;
     }
 
     static void WriteSeqResourceToManifest(ManifestPublishingContext context, SeqResource resource)
