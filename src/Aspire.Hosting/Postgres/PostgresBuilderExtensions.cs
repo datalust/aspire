@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Lifecycle;
 using Aspire.Hosting.Postgres;
-using Aspire.Hosting.Publishing;
 using Aspire.Hosting.Utils;
 
 namespace Aspire.Hosting;
@@ -31,7 +30,6 @@ public static class PostgresBuilderExtensions
 
         var postgresServer = new PostgresServerResource(name, password);
         return builder.AddResource(postgresServer)
-                      .WithManifestPublishingCallback(WritePostgresContainerToManifest)
                       .WithAnnotation(new EndpointAnnotation(ProtocolType.Tcp, port: port, containerPort: 5432)) // Internal port is always 5432.
                       .WithAnnotation(new ContainerImageAnnotation { Image = "postgres", Tag = "16.2" })
                       .WithEnvironment("POSTGRES_HOST_AUTH_METHOD", "scram-sha-256")
@@ -46,7 +44,8 @@ public static class PostgresBuilderExtensions
                           {
                               context.EnvironmentVariables.Add(PasswordEnvVarName, postgresServer.Password);
                           }
-                      });
+                      })
+                      .PublishAsContainer();
     }
 
     /// <summary>
@@ -57,9 +56,10 @@ public static class PostgresBuilderExtensions
     /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
     public static IResourceBuilder<PostgresDatabaseResource> AddDatabase(this IResourceBuilder<PostgresServerResource> builder, string name)
     {
+        builder.Resource.AddDatabase(name);
         var postgresDatabase = new PostgresDatabaseResource(name, builder.Resource);
         return builder.ApplicationBuilder.AddResource(postgresDatabase)
-                                         .WithManifestPublishingCallback(context => WritePostgresDatabaseToManifest(context, postgresDatabase));
+                                         .WithManifestPublishingCallback(postgresDatabase.WriteToManifest);
     }
 
     /// <summary>
@@ -102,17 +102,6 @@ public static class PostgresBuilderExtensions
         context.EnvironmentVariables.Add("PGADMIN_DEFAULT_PASSWORD", "admin");
     }
 
-    private static void WritePostgresContainerToManifest(ManifestPublishingContext context)
-    {
-        context.Writer.WriteString("type", "postgres.server.v0");
-    }
-
-    private static void WritePostgresDatabaseToManifest(ManifestPublishingContext context, PostgresDatabaseResource postgresDatabase)
-    {
-        context.Writer.WriteString("type", "postgres.database.v0");
-        context.Writer.WriteString("parent", postgresDatabase.Parent.Name);
-    }
-
     /// <summary>
     /// Changes the PostgreSQL resource to be published as a container in the manifest.
     /// </summary>
@@ -120,25 +109,6 @@ public static class PostgresBuilderExtensions
     /// <returns></returns>
     public static IResourceBuilder<PostgresServerResource> PublishAsContainer(this IResourceBuilder<PostgresServerResource> builder)
     {
-        return builder.WithManifestPublishingCallback(context => WritePostgresContainerResourceToManifest(context, builder.Resource));
-    }
-
-    private static void WritePostgresContainerResourceToManifest(ManifestPublishingContext context, PostgresServerResource resource)
-    {
-        context.WriteContainer(resource);
-        context.Writer.WriteString(                     // "connectionString": "...",
-            "connectionString",
-            $"Host={{{resource.Name}.bindings.tcp.host}};Port={{{resource.Name}.bindings.tcp.port}};Username=postgres;Password={{{resource.Name}.inputs.password}};");
-        context.Writer.WriteStartObject("inputs");      // "inputs": {
-        context.Writer.WriteStartObject("password");    //   "password": {
-        context.Writer.WriteString("type", "string");   //     "type": "string",
-        context.Writer.WriteBoolean("secret", true);    //     "secret": true,
-        context.Writer.WriteStartObject("default");     //     "default": {
-        context.Writer.WriteStartObject("generate");    //       "generate": {
-        context.Writer.WriteNumber("minLength", 10);    //         "minLength": 10,
-        context.Writer.WriteEndObject();                //       }
-        context.Writer.WriteEndObject();                //     }
-        context.Writer.WriteEndObject();                //   }
-        context.Writer.WriteEndObject();                // }
+        return builder.WithManifestPublishingCallback(builder.Resource.WriteToManifest);
     }
 }

@@ -161,11 +161,8 @@ public class AzureBicepResource(string name, string? templateFile = null, string
         using var template = GetBicepTemplateFile(Path.GetDirectoryName(context.ManifestPath), deleteTemporaryFileOnDispose: false);
         var path = template.Path;
 
-        // REVIEW: This should be in the ManifestPublisher
-        if (this is IResourceWithConnectionString c && c.ConnectionStringExpression is string connectionString)
-        {
-            context.Writer.WriteString("connectionString", connectionString);
-        }
+        // Write a connection string if it exists.
+        context.WriteConnectionString(this);
 
         // REVIEW: Consider multiple files.
         context.Writer.WriteString("path", context.GetManifestRelativePath(path));
@@ -175,11 +172,14 @@ public class AzureBicepResource(string name, string? templateFile = null, string
             context.Writer.WriteStartObject("params");
             foreach (var input in Parameters)
             {
-                if (input.Value is JsonNode || input.Value is IEnumerable<string>)
+                // Used for deferred evaluation of parameter.
+                object? inputValue = input.Value is Func<object?> f ? f() : input.Value;
+
+                if (inputValue is JsonNode || inputValue is IEnumerable<string>)
                 {
                     context.Writer.WritePropertyName(input.Key);
                     // Write JSON objects to the manifest for JSON node parameters
-                    JsonSerializer.Serialize(context.Writer, input.Value);
+                    JsonSerializer.Serialize(context.Writer, inputValue);
                     continue;
                 }
 
@@ -396,8 +396,8 @@ public static class AzureBicepTemplateResourceExtensions
         return builder.WithEnvironment(ctx =>
         {
             ctx.EnvironmentVariables[name] = ctx.ExecutionContext.Operation == DistributedApplicationOperation.Publish
-                ? bicepOutputReference.Value!
-                : bicepOutputReference.ValueExpression;
+                ? bicepOutputReference.ValueExpression
+                : bicepOutputReference.Value!;
         });
     }
 
@@ -415,8 +415,8 @@ public static class AzureBicepTemplateResourceExtensions
         return builder.WithEnvironment(ctx =>
         {
             ctx.EnvironmentVariables[name] = ctx.ExecutionContext.Operation == DistributedApplicationOperation.Publish
-                ? bicepOutputReference.Value!
-                : bicepOutputReference.ValueExpression;
+                ? bicepOutputReference.ValueExpression
+                : bicepOutputReference.Value!;
         });
     }
 
@@ -476,6 +476,21 @@ public static class AzureBicepTemplateResourceExtensions
         where T : AzureBicepResource
     {
         builder.Resource.Parameters[name] = value;
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds a parameter to the bicep template.
+    /// </summary>
+    /// <typeparam name="T">The <see cref="AzureBicepResource"/></typeparam>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="name">The name of the input.</param>
+    /// <param name="valueCallback">The value of the parameter.</param>
+    /// <returns>An <see cref="IResourceBuilder{T}"/>.</returns>
+    public static IResourceBuilder<T> WithParameter<T>(this IResourceBuilder<T> builder, string name, Func<object?> valueCallback)
+        where T : AzureBicepResource
+    {
+        builder.Resource.Parameters[name] = valueCallback;
         return builder;
     }
 

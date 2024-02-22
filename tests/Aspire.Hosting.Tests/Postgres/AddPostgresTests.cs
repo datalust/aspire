@@ -4,6 +4,7 @@
 using System.Net.Sockets;
 using System.Text.Json;
 using Aspire.Hosting.Postgres;
+using Aspire.Hosting.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -133,23 +134,18 @@ public class AddPostgresTests
     public void PostgresCreatesConnectionString()
     {
         var appBuilder = DistributedApplication.CreateBuilder();
-        appBuilder.AddPostgres("postgres")
-            .WithAnnotation(
-            new AllocatedEndpointAnnotation("mybinding",
-            ProtocolType.Tcp,
-            "localhost",
-            2000,
-            "https"
-            ));
+        var postgres = appBuilder.AddPostgres("postgres")
+                                 .WithAnnotation(
+                                     new AllocatedEndpointAnnotation("mybinding",
+                                      ProtocolType.Tcp,
+                                     "localhost",
+                                     2000,
+                                     "https"
+                                 ));
 
-        var app = appBuilder.Build();
-
-        var appModel = app.Services.GetRequiredService<DistributedApplicationModel>();
-
-        var connectionStringResource = Assert.Single(appModel.Resources.OfType<IResourceWithConnectionString>());
-        var connectionString = connectionStringResource.GetConnectionString();
-        Assert.StartsWith("Host=localhost;Port=2000;Username=postgres;Password=", connectionString);
-        Assert.EndsWith(";", connectionString);
+        var connectionString = postgres.Resource.GetConnectionString();
+        Assert.Equal("Host={postgres.bindings.tcp.host};Port={postgres.bindings.tcp.port};Username=postgres;Password={postgres.inputs.password}", postgres.Resource.ConnectionStringExpression);
+        Assert.Equal($"Host=localhost;Port=2000;Username=postgres;Password={PasswordUtil.EscapePassword(postgres.Resource.Password)}", connectionString);
     }
 
     [Fact]
@@ -175,8 +171,8 @@ public class AddPostgresTests
         var postgresDatabaseResource = Assert.Single(appModel.Resources.OfType<PostgresDatabaseResource>());
         var dbConnectionString = postgresDatabaseResource.GetConnectionString();
 
-        Assert.EndsWith(";", postgresConnectionString);
-        Assert.Equal(postgresConnectionString + "Database=db", dbConnectionString);
+        Assert.Equal("{postgres.connectionString};Database=db", postgresDatabaseResource.ConnectionStringExpression);
+        Assert.Equal(postgresConnectionString + ";Database=db", dbConnectionString);
     }
 
     [Fact]
@@ -237,6 +233,23 @@ public class AddPostgresTests
                 Assert.Equal("POSTGRES_PASSWORD", env.Key);
                 Assert.Equal("pass", env.Value);
             });
+    }
+
+    [Fact]
+    public void VerifyManifest()
+    {
+        var appBuilder = DistributedApplication.CreateBuilder();
+        var pgServer = appBuilder.AddPostgres("pg");
+        var db = pgServer.AddDatabase("db");
+
+        var serverManifest = ManifestUtils.GetManifest(pgServer.Resource);
+        var dbManifest = ManifestUtils.GetManifest(db.Resource);
+
+        Assert.Equal("container.v0", serverManifest["type"]?.ToString());
+        Assert.Equal(pgServer.Resource.ConnectionStringExpression, serverManifest["connectionString"]?.ToString());
+
+        Assert.Equal("value.v0", dbManifest["type"]?.ToString());
+        Assert.Equal(db.Resource.ConnectionStringExpression, dbManifest["connectionString"]?.ToString());
     }
 
     [Fact]
