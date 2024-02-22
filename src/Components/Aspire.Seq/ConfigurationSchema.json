@@ -1,0 +1,30 @@
+{
+  "definitions": {
+    "logLevel": {
+      "properties": {
+        "Seq": {
+          "$ref": "#/definitions/logLevelThreshold"
+        }
+      }
+    }
+  },
+  "properties": {
+    "Aspire": {
+      "type": "object",
+      "properties": {
+        "Seq": {
+          "type": "object",
+          "properties": {
+            "ApiKey": {
+              "type": "string"
+            },
+            "HealthChecks": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  },
+  "type": "object"
+}
