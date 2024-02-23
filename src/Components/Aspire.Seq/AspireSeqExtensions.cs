@@ -24,9 +24,11 @@ public static class AspireSeqExtensions
     {
         var settings = GetSettings(builder, configureSettings);
 
-        var seqUri = (builder.Configuration[string.IsNullOrEmpty(name)
-            ? DefaultConnectionStringConfigurationKey
-            : $"{ConnectionStringConfigurationKeyPrefix}{name}"]) ?? "http://localhost:5341";
+        var seqUri = !string.IsNullOrEmpty(settings.ServerUrl)
+            ? settings.ServerUrl
+            : (builder.Configuration[string.IsNullOrEmpty(name)
+                ? DefaultConnectionStringConfigurationKey
+                : $"{ConnectionStringConfigurationKeyPrefix}{name}"]) ?? "http://localhost:5341";
 
         builder.Services.Configure<OpenTelemetryLoggerOptions>(logging => logging.AddOtlpExporter(opt =>
         {

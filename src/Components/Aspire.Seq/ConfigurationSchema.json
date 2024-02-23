@@ -16,10 +16,16 @@
           "type": "object",
           "properties": {
             "ApiKey": {
-              "type": "string"
+              "type": "string",
+              "description": "A Seq API key that authenticates the client to the Seq server."
             },
             "HealthChecks": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Should the Seq server participate in health checks."
+            },
+            "ServerUrl": {
+              "type": "string",
+              "description": "The base URL of the Seq server (including protocol and port). E.g. \"https://example.seq.com:6789\""
             }
           }
         }
