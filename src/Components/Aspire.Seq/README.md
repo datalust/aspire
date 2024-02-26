@@ -92,7 +92,7 @@ Note that the directory specified must already exist.
 
 To deploy Seq as part of .NET Aspire deployment it must be included in the manifest.
 
-> Note that this should not be done without having [properly secured the Seq instance](https://docs.datalust.co/docs/production-deployment). It is easier to setup a secure production Seq server outside of .NET Aspire.
+> Note that this should not be done without having [properly secured the Seq instance](https://docs.datalust.co/docs/production-deployment). It is currently easier to setup a secure production Seq server outside of .NET Aspire.
 
 ```csharp
 var seq = builder.AddSeq(
