@@ -69,6 +69,11 @@ if (!resourcesToSkip.HasFlag(TestResourceNames.cosmos))
     builder.AddAzureCosmosDBClient("cosmos");
 }
 
+if (!resourcesToSkip.HasFlag(TestResourceNames.seq))
+{
+    builder.AddSeqEndpoint("seq");
+}
+
 // Ensure healthChecks are added. Some components like Cosmos
 // don't add this
 builder.Services.AddHealthChecks();
@@ -133,6 +138,11 @@ if (!resourcesToSkip.HasFlag(TestResourceNames.kafka))
 if (!resourcesToSkip.HasFlag(TestResourceNames.cosmos))
 {
     app.MapCosmosApi();
+}
+
+if (!resourcesToSkip.HasFlag(TestResourceNames.seq))
+{
+    app.MapSeqApi();
 }
 
 app.Run();
