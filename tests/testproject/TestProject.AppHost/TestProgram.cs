@@ -117,6 +117,11 @@ public class TestProgram : IDisposable
                 var cosmos = AppBuilder.AddAzureCosmosDB("cosmos").RunAsEmulator();
                 IntegrationServiceABuilder = IntegrationServiceABuilder.WithReference(cosmos);
             }
+            if (!resourcesToSkip.HasFlag(TestResourceNames.seq))
+            {
+                var seq = AppBuilder.AddSeq("seq");
+                IntegrationServiceABuilder = IntegrationServiceABuilder.WithReference(seq);
+            }
         }
 
         AppBuilder.Services.AddLifecycleHook<EndPointWriterHook>();
